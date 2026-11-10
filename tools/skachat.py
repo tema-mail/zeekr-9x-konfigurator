@@ -11,7 +11,8 @@ def fetch(urls, f):
     for u in urls:
         for a in range(2):
             r = subprocess.run(['curl', '-s', '--max-time', '60', '-o', f + '.part', '-w', '%{http_code}', u], capture_output=True, text=True)
-            if r.stdout == '200' and os.path.getsize(f + '.part') > 2000:
+            # код 200 curl печатает и при обрыве по таймауту – принимаем файл, только если curl завершился без ошибки
+            if r.returncode == 0 and r.stdout == '200' and os.path.getsize(f + '.part') > 2000:
                 os.replace(f + '.part', f); return 'ok'
             if r.stdout == '404': break
     if os.path.exists(f + '.part'): os.remove(f + '.part')
