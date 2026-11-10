@@ -52,6 +52,12 @@ rest = re.sub(r'Данные сняты .*', f'Данные сняты 12.11.202
 open('README.md', 'w').write(head + '\n' + rest)
 EOF
 grep -rn "—" index.html README.md js css && { echo "длинное тире"; exit 1; } || true
+python3 - <<'PYCJK'
+import glob, re, sys
+bad = [f'{f}: {m}' for f in glob.glob('*.html') + glob.glob('js/*.js') + glob.glob('css/*.css') + glob.glob('*.md')
+       for m in re.findall(r'[\u3400-\u9fff\uff00-\uffef]+', open(f, encoding='utf8').read())]
+if bad: sys.exit('китайский текст на странице: ' + '; '.join(bad[:10]))
+PYCJK
 [ -n "$NOPUSH" ] && { echo "собрано без выкладки: $D"; exit 0; }
 git add -A
 git commit -q -m "Конфигуратор $CAR: сборка без цен, рендеры Zeekr под каждую сборку, отправка менеджеру

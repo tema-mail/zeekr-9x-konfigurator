@@ -92,7 +92,9 @@ GT = {'外饰': 'Цвет кузова', '车漆': 'Цвет кузова', '轮
       '下包围': 'Нижний обвес', '外后视镜': 'Корпуса зеркал', '尾翼': 'Спойлер', '组件': 'Крыша', '格栅': 'Решётка радиатора', '方向盘': 'Руль', '材质': 'Отделка кресел',
       '内饰': 'Отделка салона', '大师设计': 'Дизайнерский пакет', '天幕': 'Потолок', '座椅按摩': 'Массаж кресел', '扶手箱': 'Подлокотник', '避震器': 'Подвеска', '音响': 'Аудиосистема',
       '轮胎': 'Шины', '车门': 'Двери', '二排双旋转座椅': 'Кресла второго ряда', 'Naim殿堂之声音响系统': 'Аудиосистема', '14.6英寸电动滑移智慧屏': 'Экран пассажира',
-      '高性能闭式空气悬架系统': 'Подвеска', '座椅': 'Кресла', '一体式智慧灯幕': 'Световая панель'}
+      '高性能闭式空气悬架系统': 'Подвеска', '座椅': 'Кресла', '一体式智慧灯幕': 'Световая панель',
+      'Naim音响': 'Аудиосистема', '飞翼屏': 'Выдвижной экран', '电动踏板': 'Пороги', '踏板': 'Пороги', '主动稳定杆': 'Стабилизаторы', '稳定杆': 'Стабилизаторы',
+      '旋转座椅': 'Кресла второго ряда', '拖车钩': 'Фаркоп', '吸顶屏': 'Экран для задних'}
 VFULL = {'四驱Ultra版': ('Ultra', 'Полный привод'), '后驱Max+版': ('Max+', 'Задний привод'), '后驱Max版': ('Max', 'Задний привод'),
          'Max五座版': ('Max, 5 мест', ''), 'Max四座版': ('Max, 4 места', 'Бизнес-салон'), 'Ultra五座版': ('Ultra, 5 мест', ''),
          '五周年纪念版': ('Юбилейная', '5 лет Zeekr'), '极氪001 FR': ('FR', '4 мотора'),
@@ -147,7 +149,8 @@ for V in m['vers']:
         op = [{'id': o['id'], 'def': o['def'], 'promo': o['promo'], 'promoTo': o.get('promoTo', '')} for o in s0['opts'] if o['id'] in options]
         if not op: continue
         role = s0['role']
-        title = GT.get(s0['cn']) or (options[op[0]['id']]['name'] if role == 'extra' else s0['cn'])
+        title = GT.get(s0['cn']) or (options[op[0]['id']]['name'] if (role == 'extra' or len(op) == 1) else None)
+        if not title: raise SystemExit('нет перевода группы: ' + s0['cn'])
         icons = all(options[o['id']]['icon'] for o in op)
         kind = {'paint': 'swatch', 'int': 'swatch', 'wheel': 'option', 'extra': 'check'}.get(role) or ('option' if (icons and s0['cn'] == '套件' and os.environ.get('KIT_ICONS')) else 'seg')
         if kind == 'swatch' and not icons: kind = 'seg'
@@ -176,6 +179,9 @@ ints = [c for c in m['int'] if os.path.exists(f'{IMG}/int/{c}.webp')]
 data = {'car': CAR, 'short': SHORT, 'groups': groups, 'versions': vers, 'options': options, 'have': have, 'ang': angmap, 'int': ints,
         'paths': {'ext': IMG + '/ext/{code}--{shot}.webp', 'int': IMG + '/int/{code}.webp'},
         'shots': [{'id': 'hero', 'label': 'Студия'}, {'id': 'front34', 'label': 'Спереди ¾'}, {'id': 'side', 'label': 'Сбоку'}, {'id': 'rear34', 'label': 'Сзади ¾'}, {'id': 'int', 'label': 'Салон'}]}
+_js = json.dumps(data, ensure_ascii=False)
+_cjk = sorted(set(re.findall(r'[\u3400-\u9fff\uff00-\uffef][^"]{0,20}', _js)))
+if _cjk: raise SystemExit('в данных остался китайский текст: ' + ', '.join(_cjk[:20]))
 open(OUT, 'w').write('/* Данные конфигуратора ' + CAR + ': официальный конфигуратор zeekrlife.com, снято 11.11.2026 скриптами tools/. Цен нет намеренно. */\n'
                      'window.ZEEKR_CFG = ' + json.dumps(data, ensure_ascii=False, separators=(',', ':')) + ';\n')
 print(CAR, 'версий', len(vers), 'сборок с кадрами', len(have), 'салонов', len(ints))
