@@ -4,7 +4,7 @@
 Запуск: python3 svod.py z9x-raw.json model.json"""
 import json, itertools, sys, re
 raw = json.load(open(sys.argv[1]))
-ROLE = {'外饰': 'paint', '套件': 'kit', '轮毂': 'wheel', '颜色': 'int', '中控屏': 'screen'}
+ROLE = {'外饰': 'paint', '车漆': 'paint', '轮毂': 'wheel', '颜色': 'int', '中控屏': 'screen'}
 EXTRA = ['旋转座椅', '六座悦享包', '座椅', '拖车钩', '电动拖车钩', 'Naim音响', '音响', '吸顶屏', '踏板', '电动踏板']
 SKIP_GROUPS = {'软件'}
 
@@ -16,9 +16,10 @@ for v in raw['versions']:
         if g['itemName'] in SKIP_GROUPS: continue
         for s in g['skuResultList']:
             role = ROLE.get(s['itemName'])
+            if s['itemName'] in ('配件', '家充桩'): continue
+            nvalid = sum(1 for x in s['subSkuResultList'] if x['isValidOption'])
             if not role:
-                if s['itemName'] == '配件': continue
-                role = 'seat' if (g['itemName'] == '内饰' and s['itemName'] == '座椅') else 'extra'
+                role = 'choice' if (s.get('mustSelected') or nvalid > 1) else 'extra'
             lst = []
             for x in s['subSkuResultList']:
                 pc = x['productCode']
@@ -28,7 +29,7 @@ for v in raw['versions']:
                 if not x['isValidOption'] and not (role == 'wheel' and promo): continue
                 to = re.search(r'(\d+)英寸', x.get('noValidSelectedNotice') or '') if promo else None
                 lst.append({'id': pc, 'def': bool(x['isDefaultSelected']), 'promo': promo, 'promoTo': (to.group(1) + '″') if to else ''})
-            if lst: secs.append({'sku': s['skuCode'], 'role': role, 'cn': s['itemName'], 'must': bool(s.get('mustSelected')), 'opts': lst})
+            if lst: secs.append({'sku': s['skuCode'], 'role': role, 'cn': s['itemName'], 'gcn': g['itemName'], 'must': bool(s.get('mustSelected')) or role != 'extra', 'opts': lst})
     # комментарии (запас хода) по комбинациям уровня версии
     for key, items in v['items'].items():
         for g in items or []:

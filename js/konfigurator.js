@@ -139,16 +139,19 @@
   }
 
   // ---------- отрисовка ----------
-  var TITLES = { battery: "Батарея", adas: "Помощь водителю", paint: "Цвет кузова", kit: "Декор кузова", wheel: "Диски", seat: "Кресла", int: "Цвет салона", screen: "Экран спереди" };
-  var KIND = { battery: "seg", adas: "seg", paint: "swatch", kit: "option", wheel: "option", seat: "seg", int: "swatch", screen: "seg" };
-  var ORDER = ["battery", "adas", "paint", "kit", "wheel", "seat", "int", "screen"];
+  // заголовок и вид группы – из данных (title, kind); у уровня версии – свои
+  var LEVEL_TITLE = { battery: "Батарея", adas: "Помощь водителю" };
+  function titleOf(g) { return g.title || LEVEL_TITLE[g.role] || ""; }
+  function kindOf(g) { return g.kind || "seg"; }
+  // группы выбора по порядку: уровень версии, затем секции из данных (без галочек)
+  function choiceGroups(V) { return V.level.concat(V.secs.filter(function (g) { return g.role !== "extra"; })); }
 
   function range(V, wheel) {
     var r = V.ranges[selRole("battery")] || {};
     return r[wheel || selRole("wheel")] || null;
   }
   function renderGroup(V, g) {
-    var cur = state.sel[g.sku], kind = KIND[g.role], single = g.opts.length === 1, html;
+    var cur = state.sel[g.sku], kind = kindOf(g), single = g.opts.length === 1, html;
     if (kind === "swatch") {
       html = '<div class="z9__swatches">' + g.opts.map(function (o) {
         var on = o.id === cur, p = opt(o.id);
@@ -172,14 +175,13 @@
       }).join("") + "</div>";
     }
     var picked = kind === "swatch" ? '<span class="z9__picked">' + esc(opt(cur).name) + "</span>" : "";
-    return '<div class="z9__block"><div class="z9__head"><h2 class="z9__title">' + TITLES[g.role] + "</h2>" + picked + "</div>" + html + noteFor(g) + "</div>";
+    return '<div class="z9__block"><div class="z9__head"><h2 class="z9__title">' + esc(titleOf(g)) + "</h2>" + picked + "</div>" + html + noteFor(g) + "</div>";
   }
   function noteFor(g) {
     var t = "";
-    if (g.role === "kit" && g.opts.some(function (o) { return conflict(o.id, selRole("paint")); })) t = "Часть декора сочетается только с определёнными цветами кузова – при выборе цвет подстроится.";
+    if (g.role === "choice" && g.img === "ext" && g.opts.some(function (o) { return conflict(o.id, selRole("paint")); })) t = "Часть вариантов сочетается только с определёнными цветами кузова – при выборе цвет подстроится.";
     if (g.role === "wheel") {
-      var kit = selRole("kit");
-      if (kit && opt(kit).cascade.some(function (c) { return opt(c).sku === g.sku; })) t = "С выбранным пакетом – только его фирменные диски.";
+      version().secs.forEach(function (x) { var sel = state.sel[x.sku]; if (x.sku !== g.sku && sel && opt(sel).cascade.some(function (c) { return opt(c).sku === g.sku; })) t = "С выбранным пакетом – только его фирменные диски."; });
     }
     return t ? '<p class="z9__opt-note">' + esc(t) + "</p>" : "";
   }
@@ -195,7 +197,7 @@
         var on = v.id === state.version;
         return '<button type="button" class="z9__trim' + (on ? " is-active" : "") + '" data-version="' + v.id + '" aria-pressed="' + on + '"><span class="z9__trim-name">' + esc(D.short + " " + v.name) + '</span><span class="z9__trim-tag">' + esc(v.tag) + "</span></button>";
       }).join("") + "</div></div>";
-    ORDER.forEach(function (role) { var g = groupByRole(V, role); if (g) html += renderGroup(V, g); });
+    choiceGroups(V).forEach(function (g) { html += renderGroup(V, g); });
     var extras = V.secs.filter(function (g) { return g.role === "extra"; });
     if (extras.length) {
       html += '<div class="z9__block"><div class="z9__head"><h2 class="z9__title">Дополнительно</h2></div><div class="z9__checks">' + extras.map(function (g) {
@@ -218,12 +220,12 @@
     var gl = D.groups.filter(function (g) { return g.id === V.group; })[0];
     var lines = [["Версия", D.short + " " + V.name + (gl && D.groups.length > 1 ? ", " + gl.label : "")]];
     if (V.drive) lines.push(["Привод", V.drive]);
-    ORDER.forEach(function (role) {
-      var g = groupByRole(V, role); if (!g) return;
-      var p = opt(state.sel[g.sku]), val = p.name;
+    choiceGroups(V).forEach(function (g) {
+      var role = g.role, p = opt(state.sel[g.sku]), val = p.name;
+      if (!state.sel[g.sku]) return;
       if (role === "adas") val = "Пакет " + p.name;
       if (role === "wheel") val = p.name + (p.note ? ", " + p.note : "");
-      lines.push([TITLES[role], val]);
+      lines.push([titleOf(g), val]);
       if (role === "battery" && r) lines.push(["Запас хода (CLTC)", r.ev + " км на электричестве, " + r.total + " км всего"]);
     });
     var ex = V.secs.filter(function (g) { return g.role === "extra" && state.sel[g.sku]; }).map(function (g) { return opt(state.sel[g.sku]).name; });
@@ -263,10 +265,10 @@
     } else if (d.sku && d.pc) {
       var g = groupsOf(version()).filter(function (x) { return x.sku === d.sku; })[0], role = g ? g.role : "";
       state.sel[d.sku] = d.pc;
-      if (role === "kit") state.shot = "hero";                          // декор – всегда первый кадр, там видна решётка
+      if (role === "wheel") state.shot = "side";
       else if (role === "paint" || role === "adas") { if (state.shot === "int") state.shot = "hero"; }
-      else if (role === "wheel") state.shot = "side";
-      else if (role === "int" || role === "screen" || role === "seat") state.shot = "int";
+      else if (role === "int" || role === "screen" || (g && g.img === "int")) state.shot = "int";
+      else if (g && g.img === "ext") state.shot = "hero";                // декор, крыша, зеркала, спойлер – всегда первый кадр
       update(d.sku, role !== "battery");
     } else if (d.shot) { state.shot = d.shot; renderThumbs(); show();
     } else if (d.nav) { step(d.nav === "next" ? 1 : -1);

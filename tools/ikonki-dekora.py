@@ -4,7 +4,7 @@ import json, os, sys
 from PIL import Image
 m = json.load(open(sys.argv[1])); IMG = sys.argv[2]
 box = tuple(int(x) for x in sys.argv[3:7]) if len(sys.argv) > 6 else (25, 280, 255, 510)
-kits = {o['id'] for V in m['vers'] for s in V['secs'] if s['role'] == 'kit' for o in s['opts']}
+kits = {o['id'] for V in m['vers'] for s in V['secs'] if s['role'] == 'kit' or s.get('cn') == '套件' for o in s['opts']}
 for pc in sorted(kits):
     codes = [c for c in m['ext'] if pc in c.split('_') and os.path.exists(f'{IMG}/ext/{c}--front34.webp')]
     if not codes: print('нет кадра для', pc); continue
