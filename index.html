@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Конфигуратор Zeekr 9X</title>
+<script>(function(){var t;try{t=localStorage.getItem('tema')}catch(e){}if(!t){var h=new Date().getHours();t=(h>=19||h<7||(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches))?'dark':'light'}document.documentElement.setAttribute('data-theme',t)})();</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/konfigurator.css">
+</head>
+<body>
+
+<!-- Конфигуратор Zeekr 9X. Встраивается в любую страницу: этот блок + css/konfigurator.css + js/zeekr-9x-data.js + js/konfigurator.js + папка img/. -->
+<div class="z9" data-z9>
+  <div class="z9__stage-wrap">
+    <div class="z9__stage" tabindex="0" role="img" aria-label="Zeekr 9X в выбранной комплектации">
+      <div class="z9__shot z9__shot--a"><img alt="Zeekr 9X" width="1600" height="1000" draggable="false"></div>
+      <div class="z9__shot z9__shot--b"><img alt="" width="1600" height="1000" draggable="false"></div>
+      <div class="z9__caption">
+        <div class="z9__name" data-slot="stage-name">Zeekr 9X</div>
+        <div class="z9__note" data-slot="stage-note"></div>
+      </div>
+      <div class="z9__arrows">
+        <button type="button" class="z9__arrow" data-nav="prev" aria-label="Предыдущий вид">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button type="button" class="z9__arrow z9__arrow--next" data-nav="next" aria-label="Следующий вид">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <div class="z9__loader" aria-hidden="true"></div>
+    </div>
+    <div class="z9__thumbs" data-slot="thumbs" aria-label="Вид"></div>
+  </div>
+
+  <div class="z9__panel">
+    <div class="z9__block">
+      <div class="z9__head"><h2 class="z9__title">Мест в салоне</h2></div>
+      <div class="z9__segs" data-slot="seats"></div>
+    </div>
+
+    <div class="z9__block">
+      <div class="z9__head"><h2 class="z9__title">Версия</h2></div>
+      <div class="z9__trims" data-slot="versions"></div>
+    </div>
+
+    <div class="z9__block" data-block="battery">
+      <div class="z9__head"><h2 class="z9__title">Батарея</h2></div>
+      <div class="z9__segs" data-slot="battery"></div>
+    </div>
+
+    <div class="z9__block" data-block="adas">
+      <div class="z9__head"><h2 class="z9__title">Помощь водителю</h2></div>
+      <div class="z9__segs" data-slot="adas"></div>
+    </div>
+
+    <div class="z9__block">
+      <div class="z9__head"><h2 class="z9__title">Цвет кузова</h2><span class="z9__picked" data-slot="paint-picked"></span></div>
+      <div class="z9__swatches" data-slot="paints"></div>
+    </div>
+
+    <div class="z9__block">
+      <div class="z9__head"><h2 class="z9__title">Декор кузова</h2><span class="z9__picked" data-slot="kit-picked"></span></div>
+      <div class="z9__options" data-slot="kits"></div>
+      <p class="z9__opt-note" data-slot="kit-note"></p>
+    </div>
+
+    <div class="z9__block">
+      <div class="z9__head"><h2 class="z9__title">Диски</h2><span class="z9__picked" data-slot="wheel-picked"></span></div>
+      <div class="z9__options" data-slot="wheels"></div>
+      <p class="z9__opt-note" data-slot="wheel-note"></p>
+    </div>
+
+    <div class="z9__block">
+      <div class="z9__head"><h2 class="z9__title">Цвет салона</h2><span class="z9__picked" data-slot="interior-picked"></span></div>
+      <div class="z9__swatches" data-slot="interiors"></div>
+    </div>
+
+    <div class="z9__block">
+      <div class="z9__head"><h2 class="z9__title">Экран спереди</h2></div>
+      <div class="z9__segs" data-slot="screens"></div>
+    </div>
+
+    <div class="z9__block" data-block="extras">
+      <div class="z9__head"><h2 class="z9__title">Дополнительно</h2></div>
+      <div class="z9__checks" data-slot="extras"></div>
+    </div>
+
+    <div class="z9__block z9__summary">
+      <div class="z9__summary-title">Ваш Zeekr 9X</div>
+      <div class="z9__summary-config" data-slot="summary-config"></div>
+      <dl class="z9__rows" data-slot="summary-lines"></dl>
+      <button type="button" class="z9__btn" data-copy>Скопировать ссылку на эту сборку</button>
+      <p class="z9__status" data-slot="copy-status" role="status" aria-live="polite"></p>
+      <p class="z9__photo-note">Изображения – официальные рендеры Zeekr (zeekrlife.com) именно этой сборки: цвет, декор, диски и лидары совпадают с выбором. Запас хода – по китайскому циклу CLTC. Доступность варианта у конкретного автомобиля подтверждается до договора.</p>
+    </div>
+  </div>
+</div>
+
+<button type="button" class="z9-theme" data-theme-toggle aria-label="Сменить тему"></button>
+
+<script src="js/zeekr-9x-data.js"></script>
+<script src="js/konfigurator.js"></script>
+</body>
+</html>
