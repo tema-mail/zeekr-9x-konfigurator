@@ -190,3 +190,30 @@ body { margin: 0; background: var(--z9-bg); color: var(--z9-text); font-family: 
 .z9__link span { color: var(--z9-accent); font-weight: 700; text-decoration: none; display: inline-block; margin-right: .15rem; }
 .z9__link:hover { color: var(--z9-accent); }
 .z9__check input:disabled + * , .z9__check input:disabled { cursor: default; }
+
+/* картинка с миниатюрами закреплена сверху сплошным блоком: опции при прокрутке уходят под неё, не просвечивают */
+.z9__stage-wrap { background: var(--z9-bg); z-index: 20; }
+@media (max-width: 1023px) {
+  .z9__stage-wrap {
+    position: sticky; top: 0;
+    margin: calc(-1 * clamp(1rem, .6rem + 1.5vw, 2rem)) -16px 0;
+    padding: 10px 16px 10px;
+    box-shadow: 0 10px 14px -12px #0000004d;
+  }
+  .z9__thumbs { margin-top: .5rem; }
+}
+@media (max-width: 640px) {
+  .z9__thumb { padding-bottom: .2rem; gap: .1rem; }
+  .z9__thumb img { aspect-ratio: 16 / 9; }
+  .z9__thumb span { font-size: .5625rem; line-height: 1.2; }
+}
+@media (max-width: 1023px) {
+  /* блок не прячется под закреплённую картинку при переходе к нему */
+  .z9__block { scroll-margin-top: calc((100vw - 32px) * .625 + 110px); }
+}
+@media (min-width: 641px) and (max-width: 1023px) {
+  /* планшет: картинка не выше трети экрана */
+  .z9__stage { aspect-ratio: auto; height: min(calc((100vw - 32px) * .625), 34vh); }
+  .z9__thumb img { aspect-ratio: 16 / 7; }
+  .z9__block { scroll-margin-top: calc(34vh + 140px); }
+}
