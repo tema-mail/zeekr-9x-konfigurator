@@ -1,4 +1,5 @@
-import json, subprocess, itertools, os
+import json, subprocess, itertools, os, sys
+MID, MYC = sys.argv[1], sys.argv[2]   # пример: 10 GMY_9X_01 (9X), 11 GMY_Z012_01 (8X)
 API='https://api-gw-toc.zeekrlife.com/zeekrlife-config-order/v1/model/pub/toc/'
 from playwright.sync_api import sync_playwright
 EXE='/Users/artemgalimov/Library/Caches/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-mac-arm64/chrome-headless-shell'
@@ -19,10 +20,13 @@ try:
   def onreq(r):
     if 'modelVersion/list' in r.url and not HDR: HDR.update({k:v for k,v in r.headers.items() if not k.startswith(':') and k.lower() not in ('content-length','host','cookie','referer','user-agent','accept-encoding','origin')})
   PG.on('request',onreq)
-  PG.goto('https://www.zeekrlife.com/toReserve?modelInfoId=10&modelYearCode=GMY_9X_01',wait_until='networkidle',timeout=90000)
+  PG.goto(f'https://www.zeekrlife.com/toReserve?modelInfoId={MID}&modelYearCode={MYC}',wait_until='networkidle',timeout=90000)
   print('headers:',sorted(HDR.keys()))
-  for gid in ['3','4']:
-      vs=post('modelVersion/list',{'modelInfoId':'10','couponChoose':None,'modelYearCode':'GMY_9X_01','versionGroupId':gid})
+  grp=post('modelYearVersionGroup',{'modelYearCode':MYC}) or {}
+  gids=[g['versionGroupId'] for g in (grp.get('modelYearVersionGroupItemParamList') or [])] or [None]
+  print('группы',gids)
+  for gid in gids:
+      vs=post('modelVersion/list',{'modelInfoId':MID,'couponChoose':None,'modelYearCode':MYC,'versionGroupId':gid})
       for v in vs:
           import re as _re
           gc=sorted(set(_re.findall(r'"groupCode": "([^"]+)"',json.dumps(v.get('saleItemAndSkuResults'),ensure_ascii=False))))[0]
@@ -39,7 +43,7 @@ try:
           combos=list(itertools.product(*[[c for c,_,_ in lvl[k]['opts']] for k in lvl]))
           items={}
           for combo in combos:
-              data=post('modelItem/list',{'modelInfoId':'10','modelVersionId':v['modelVersionId'],'groupCode':gc,'productCodes':list(combo),'couponChoose':None})
+              data=post('modelItem/list',{'modelInfoId':MID,'modelVersionId':v['modelVersionId'],'groupCode':gc,'productCodes':list(combo),'couponChoose':None})
               items['_'.join(combo)]=data
           out['versions'].append({'group':gid,'id':v['modelVersionId'],'name':v['versionName'],'groupCode':gc,'level':lvl,'vehicleSkus':v['vehiclePicUrlSkuCodes'],'interiorSkus':v['interiorPicUrlSkuCodes'],'bigPic':v.get('bigPicRuleList'),'items':items,'detailImgs':v.get('versionDetailImgList')})
           print(v['modelVersionId'],v['versionName'],len(combos),'комбинаций уровня версии')

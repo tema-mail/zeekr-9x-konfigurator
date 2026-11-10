@@ -1,43 +1,83 @@
-import json, itertools
-d=json.load(open('z9x-raw.json'))
-SC={'paint':'Z011SC002','kit':'Z011SC012','wheel':'Z011SC013','int':'Z011SC003','screen':'Z011SC008'}
-opts={}   # productCode -> info
-vers=[]
-for v in d['versions']:
-    V={'id':v['id'],'name':v['name'],'group':v['group'],'level':v['level'],'combos':{}}
-    for key,items in v['items'].items():
-        avail={k:[] for k in SC}; extra=[]
-        for g in items:
+"""Свод опций любой модели Zeekr из z9x-raw.json (sniat-opcii.py) -> model.json.
+Роли опций определяются по китайскому названию группы. Картинка кузова и салона у Zeekr – это
+коды выбранных опций в порядке vehiclePicUrlSkuCodes / interiorPicUrlSkuCodes (невыбранные пропускаются).
+Запуск: python3 svod.py z9x-raw.json model.json"""
+import json, itertools, sys
+raw = json.load(open(sys.argv[1]))
+ROLE = {'外饰': 'paint', '套件': 'kit', '轮毂': 'wheel', '颜色': 'int', '中控屏': 'screen'}
+EXTRA = ['旋转座椅', '六座悦享包', '座椅', '拖车钩', '电动拖车钩', 'Naim音响', '音响', '吸顶屏', '踏板', '电动踏板']
+SKIP_GROUPS = {'软件'}
+
+opts, vers = {}, []
+for v in raw['versions']:
+    key0 = [k for k, x in v['items'].items() if x][0]
+    secs = []   # [{sku, role, name, opts:[{id,def,promo}]}]
+    for g in v['items'][key0]:
+        if g['itemName'] in SKIP_GROUPS: continue
+        for s in g['skuResultList']:
+            role = ROLE.get(s['itemName'])
+            if not role:
+                if s['itemName'] == '配件': continue
+                role = 'seat' if (g['itemName'] == '内饰' and s['itemName'] == '座椅') else 'extra'
+            lst = []
+            for x in s['subSkuResultList']:
+                pc = x['productCode']
+                o = opts.setdefault(pc, {'cn': x['subSkuName'], 'sku': s['skuCode'], 'cover': x['coverImg'], 'mutex': set(), 'cascade': set(), 'comment': {}})
+                o['mutex'].update(x['mutexProduct']); o['cascade'].update(x['cascadeProduct'])
+                promo = (not x['isValidOption']) and any(a.get('actionCode') == 'NO_VALID_SELECTED' for a in (x.get('subSkuActionResults') or []))
+                if not x['isValidOption'] and not (role == 'wheel' and promo): continue
+                lst.append({'id': pc, 'def': bool(x['isDefaultSelected']), 'promo': promo})
+            if lst: secs.append({'sku': s['skuCode'], 'role': role, 'cn': s['itemName'], 'must': bool(s.get('mustSelected')), 'opts': lst})
+    # комментарии (запас хода) по комбинациям уровня версии
+    for key, items in v['items'].items():
+        for g in items or []:
             for s in g['skuResultList']:
                 for x in s['subSkuResultList']:
-                    pc=x['productCode']
-                    opts.setdefault(pc,{'pc':pc,'cn':x['subSkuName'],'sku':s['skuCode'],'skuName':s['itemName'],'cover':x['coverImg'],'detail':x['detailImg'],'mutex':set(),'cascade':set(),'comment':{}})
-                    o=opts[pc]; o['mutex'].update(x['mutexProduct']); o['cascade'].update(x['cascadeProduct'])
-                    if x.get('configComment'): o['comment'][v['id']+'|'+key]=x['configComment']
-                    if not x['isValidOption']: continue
-                    for k,sc in SC.items():
-                        if s['skuCode']==sc: avail[k].append((pc,bool(x['isDefaultSelected'])))
-                    if s['skuCode'] in ('Z011SC009','Z011SC010'): extra.append((pc,bool(x['isDefaultSelected'])))
-        V['combos'][key]={'avail':avail,'extra':extra}
-    vers.append(V)
+                    if x.get('configComment') and x['productCode'] in opts:
+                        opts[x['productCode']]['comment'][key] = x['configComment']
+    lvl = {}
+    for sku, x in v['level'].items():
+        lvl[sku] = {'cn': x['name'], 'opts': [{'id': pc, 'cn': n, 'def': bool(d)} for pc, n, d in x['opts']]}
+        for pc, n, d in x['opts']:
+            opts.setdefault(pc, {'cn': n, 'sku': sku, 'cover': '', 'mutex': set(), 'cascade': set(), 'comment': {}})
+    vers.append({'id': v['id'], 'cn': v['name'], 'group': v['group'], 'level': lvl, 'secs': secs,
+                 'vehicleSkus': v['vehicleSkus'], 'interiorSkus': v['interiorSkus'], 'levelKeys': list(v['items'])})
+
+def conflict(a, b):
+    return b in opts[a]['mutex'] or a in opts[b]['mutex']
 def ok(sel):
     for a in sel:
         for b in sel:
-            if a!=b and (b in opts[a]['mutex'] or a in opts[b]['mutex']): return False
+            if a != b and conflict(a, b): return False
+    for a in sel:
+        for c in opts[a]['cascade']:
+            for x in sel:
+                if x != c and opts[x]['sku'] == opts[c]['sku']: return False
     return True
-ext=set(); intr=set(); where={}
+
+ext, intr, where = set(), set(), {}
 for V in vers:
-    for key,c in V['combos'].items():
-        adas=key.split('_')[-1]
-        av=c['avail']
-        for p,_ in av['paint']:
-            for k,_ in av['kit']:
-                for w,_ in av['wheel']:
-                    if not ok([p,k,w]): continue
-                    if opts[k]['cascade'] and w not in opts[k]['cascade']: continue
-                    code=f'{adas}_{p}_{k}_{w}'; ext.add(code); where.setdefault(code,V['id'])
-        for i,_ in av['int']:
-            for s,_ in av['screen']:
-                code=f'{i}_{adas}_{s}'; intr.add(code); where.setdefault('I'+code,V['id'])
-print('внешних сборок',len(ext),'салонов',len(intr))
-json.dump({'opts':{k:{**v,'mutex':sorted(v['mutex']),'cascade':sorted(v['cascade'])} for k,v in opts.items()},'vers':vers,'ext':sorted(ext),'int':sorted(intr),'where':where},open('model.json','w'),ensure_ascii=False,indent=0)
+    bysku = {s['sku']: s for s in V['secs']}
+    for sku in V['level']: bysku[sku] = {'sku': sku, 'opts': V['level'][sku]['opts'], 'must': True}
+    def choices(skus):
+        cols = []
+        for sku in skus:
+            s = bysku.get(sku)
+            if not s: continue
+            c = [o['id'] for o in s['opts']]
+            if not s.get('must', True) or (s.get('role') == 'extra'): c = c + [None]
+            cols.append(c)
+        return itertools.product(*cols)
+    for combo in choices(V['vehicleSkus']):
+        sel = [c for c in combo if c]
+        if ok(sel):
+            code = '_'.join(sel); ext.add(code); where.setdefault(code, V['id'])
+    for combo in choices(V['interiorSkus']):
+        sel = [c for c in combo if c]
+        if ok(sel):
+            code = '_'.join(sel); intr.add(code); where.setdefault('I' + code, V['id'])
+
+json.dump({'opts': {k: {**v, 'mutex': sorted(v['mutex']), 'cascade': sorted(v['cascade'])} for k, v in opts.items()},
+           'vers': vers, 'ext': sorted(ext), 'int': sorted(intr), 'where': where}, open(sys.argv[2], 'w'), ensure_ascii=False, indent=0)
+print('версий', len(vers), 'сборок кузова', len(ext), 'салонов', len(intr))
+for V in vers: print(V['id'], V['cn'], [(s['role'], s['cn'], len(s['opts'])) for s in V['secs']])

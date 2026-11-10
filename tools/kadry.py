@@ -1,7 +1,7 @@
-"""Официальные кадры Zeekr (raw/) -> WebP для сайта (img/zeekr-9x/). Запуск: python3 tools/kadry.py <папка raw>"""
+"""Официальные кадры Zeekr (raw/) -> WebP для сайта (img/zeekr-9x/). Запуск: python3 tools/kadry.py <папка raw> <img/zeekr-XX>"""
 import sys, os, glob
 from PIL import Image
-RAW = sys.argv[1]; OUT = 'img/zeekr-9x'
+RAW = sys.argv[1]; OUT = sys.argv[2] if len(sys.argv) > 2 else 'img/zeekr-9x'
 os.makedirs(OUT + '/ext', exist_ok=True); os.makedirs(OUT + '/int', exist_ok=True); os.makedirs(OUT + '/options', exist_ok=True)
 n = 0
 for f in sorted(glob.glob(RAW + '/ext/*.png')):
