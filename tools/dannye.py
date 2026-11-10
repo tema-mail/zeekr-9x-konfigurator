@@ -79,7 +79,7 @@ for V in m['vers']:
             if c:
                 mm = re.findall(r'(\d+)km', c)
                 if len(mm) >= 2: ranges.setdefault(bat, {})[w] = {'ev': int(mm[0]), 'total': int(mm[1])}
-    secs = [{'sku': s['sku'], 'role': s['role'], 'opts': [{'id': o['id'], 'def': o['def'], 'promo': o['promo']} for o in s['opts'] if o['id'] in options]} for s in V['secs']]
+    secs = [{'sku': s['sku'], 'role': s['role'], 'opts': [{'id': o['id'], 'def': o['def'], 'promo': o['promo'], 'promoTo': o.get('promoTo', '')} for o in s['opts'] if o['id'] in options]} for s in V['secs']]
     secs = [s for s in secs if s['opts']]
     gl = GROUPS.get(MID, {}).get(V['group'])
     vers.append({'id': V['id'], 'name': VNAME[key][0], 'tag': VNAME[key][1], 'group': V['group'] if gl else '', 'drive': drive,

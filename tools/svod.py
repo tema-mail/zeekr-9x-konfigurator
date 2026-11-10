@@ -2,7 +2,7 @@
 Роли опций определяются по китайскому названию группы. Картинка кузова и салона у Zeekr – это
 коды выбранных опций в порядке vehiclePicUrlSkuCodes / interiorPicUrlSkuCodes (невыбранные пропускаются).
 Запуск: python3 svod.py z9x-raw.json model.json"""
-import json, itertools, sys
+import json, itertools, sys, re
 raw = json.load(open(sys.argv[1]))
 ROLE = {'外饰': 'paint', '套件': 'kit', '轮毂': 'wheel', '颜色': 'int', '中控屏': 'screen'}
 EXTRA = ['旋转座椅', '六座悦享包', '座椅', '拖车钩', '电动拖车钩', 'Naim音响', '音响', '吸顶屏', '踏板', '电动踏板']
@@ -26,7 +26,8 @@ for v in raw['versions']:
                 o['mutex'].update(x['mutexProduct']); o['cascade'].update(x['cascadeProduct'])
                 promo = (not x['isValidOption']) and any(a.get('actionCode') == 'NO_VALID_SELECTED' for a in (x.get('subSkuActionResults') or []))
                 if not x['isValidOption'] and not (role == 'wheel' and promo): continue
-                lst.append({'id': pc, 'def': bool(x['isDefaultSelected']), 'promo': promo})
+                to = re.search(r'(\d+)英寸', x.get('noValidSelectedNotice') or '') if promo else None
+                lst.append({'id': pc, 'def': bool(x['isDefaultSelected']), 'promo': promo, 'promoTo': (to.group(1) + '″') if to else ''})
             if lst: secs.append({'sku': s['skuCode'], 'role': role, 'cn': s['itemName'], 'must': bool(s.get('mustSelected')), 'opts': lst})
     # комментарии (запас хода) по комбинациям уровня версии
     for key, items in v['items'].items():

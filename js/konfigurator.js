@@ -158,7 +158,7 @@
     } else if (kind === "option") {
       html = '<div class="z9__options">' + g.opts.map(function (o) {
         var on = o.id === cur, p = opt(o.id), note = p.note;
-        if (g.role === "wheel") { var r = range(V, o.id); if (r) note += (note ? " · " : "") + r.ev + " км на электричестве"; if (o.promo) note += " · сейчас Zeekr ставит вместо них 22″ по акции"; }
+        if (g.role === "wheel") { var r = range(V, o.id); if (r) note += (note ? " · " : "") + r.ev + " км на электричестве"; if (o.promo) note += " · сейчас Zeekr по акции ставит вместо них " + (o.promoTo || "диски больше"); }
         return '<button type="button" class="z9__option' + (on ? " is-active" : "") + (single ? " is-single" : "") + '" data-sku="' + g.sku + '" data-pc="' + o.id + '" aria-pressed="' + on + '">' +
           (p.icon ? '<img src="' + p.icon + '" alt="" width="56" height="56" loading="lazy">' : "<span></span>") +
           '<span class="z9__option-text"><span class="z9__option-name">' + esc(p.name) + '</span><span class="z9__option-note">' + esc(note) + "</span></span></button>";
