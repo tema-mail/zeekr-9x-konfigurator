@@ -42,8 +42,9 @@ for v in raw['versions']:
         lvl[sku] = {'cn': x['name'], 'opts': [{'id': pc, 'cn': n, 'def': bool(d)} for pc, n, d in x['opts']]}
         for pc, n, d in x['opts']:
             opts.setdefault(pc, {'cn': n, 'sku': sku, 'cover': '', 'mutex': set(), 'cascade': set(), 'comment': {}})
+    ang = next((b['skuCodeList'] for b in (v.get('bigPic') or []) if b.get('skuCodeList')), None) or v['vehicleSkus']
     vers.append({'id': v['id'], 'cn': v['name'], 'group': v['group'], 'level': lvl, 'secs': secs,
-                 'vehicleSkus': v['vehicleSkus'], 'interiorSkus': v['interiorSkus'], 'levelKeys': list(v['items'])})
+                 'vehicleSkus': v['vehicleSkus'], 'interiorSkus': v['interiorSkus'], 'angleSkus': ang, 'levelKeys': list(v['items'])})
 
 def conflict(a, b):
     return b in opts[a]['mutex'] or a in opts[b]['mutex']
@@ -57,7 +58,7 @@ def ok(sel):
                 if x != c and opts[x]['sku'] == opts[c]['sku']: return False
     return True
 
-ext, intr, where = set(), set(), {}
+ext, intr, angs, where = set(), set(), set(), {}
 for V in vers:
     bysku = {s['sku']: s for s in V['secs']}
     for sku in V['level']: bysku[sku] = {'sku': sku, 'opts': V['level'][sku]['opts'], 'must': True}
@@ -74,12 +75,15 @@ for V in vers:
         sel = [c for c in combo if c]
         if ok(sel):
             code = '_'.join(sel); ext.add(code); where.setdefault(code, V['id'])
+            bys = {opts[c]['sku']: c for c in sel}
+            acode = '_'.join(bys[k] for k in V['angleSkus'] if k in bys)
+            angs.add(acode); where.setdefault('A' + acode, V['id'])
     for combo in choices(V['interiorSkus']):
         sel = [c for c in combo if c]
         if ok(sel):
             code = '_'.join(sel); intr.add(code); where.setdefault('I' + code, V['id'])
 
 json.dump({'opts': {k: {**v, 'mutex': sorted(v['mutex']), 'cascade': sorted(v['cascade'])} for k, v in opts.items()},
-           'vers': vers, 'ext': sorted(ext), 'int': sorted(intr), 'where': where}, open(sys.argv[2], 'w'), ensure_ascii=False, indent=0)
-print('версий', len(vers), 'сборок кузова', len(ext), 'салонов', len(intr))
+           'vers': vers, 'ext': sorted(ext), 'ang': sorted(angs), 'int': sorted(intr), 'where': where}, open(sys.argv[2], 'w'), ensure_ascii=False, indent=0)
+print('версий', len(vers), 'сборок кузова', len(ext), 'ракурсов', len(angs), 'салонов', len(intr))
 for V in vers: print(V['id'], V['cn'], [(s['role'], s['cn'], len(s['opts'])) for s in V['secs']])

@@ -98,7 +98,7 @@ VFULL = {'四驱Ultra版': ('Ultra', 'Полный привод'), '后驱Max+�
          '五周年纪念版': ('Юбилейная', '5 лет Zeekr'), '极氪001 FR': ('FR', '4 мотора'),
          '103度四驱Ultra版': ('Ultra 103 кВт·ч', 'Полный привод'), '103度后驱Max版': ('Max 103 кВт·ч', 'Задний привод'), '75度后驱Max版': ('Max 75 кВт·ч', 'Задний привод'),
          '六座 Ultra+行政版': ('Ultra+ «Бизнес»', '6 мест'), '七座 Ultra+齐家版': ('Ultra+ «Семья»', '7 мест'), '七座 Ultra版': ('Ultra', '7 мест'),
-         '极氪009 光辉典藏版': ('«Гуанхуэй» коллекционная', ''), '极氪009 光辉': ('«Гуанхуэй»', ''), '长续航智驾版': ('Увеличенный запас хода', ''), '智驾版': ('Стандартная', '')}
+         '极氪009 光辉典藏版': ('Коллекционная', 'золотой декор 24K'), '极氪009 光辉': ('Стандартная', ''), '长续航智驾版': ('Увеличенный запас хода', ''), '智驾版': ('Стандартная', '')}
 
 VNAME = {'Max': ('Max', 'Начальная'), 'Ultra+': ('Ultra+', 'Лучшее шасси'), 'Ultra': ('Ultra', 'Выбор батареи и дисков'), 'Hyper': ('Hyper', '3 мотора, всё включено'),
          '曜黑': ('«Яохэй»', 'Чёрная спецверсия'), '曜影': ('Shadow «Яоин»', '3 мотора, спортивная')}
@@ -166,12 +166,14 @@ for V in m['vers']:
     secs.sort(key=order)
     gl = GROUPS.get(MID, {}).get(V['group'])
     vers.append({'id': V['id'], 'name': vname, 'tag': vtag, 'group': V['group'] if gl else '', 'drive': drive,
-                 'level': level, 'secs': secs, 'vehicleSkus': V['vehicleSkus'], 'interiorSkus': V['interiorSkus'], 'ranges': ranges})
+                 'level': level, 'secs': secs, 'vehicleSkus': V['vehicleSkus'], 'interiorSkus': V['interiorSkus'], 'angleSkus': V.get('angleSkus', V['vehicleSkus']), 'ranges': ranges})
 groups = [{'id': g, 'label': l[0], 'sub': l[1]} for g, l in GROUPS.get(MID, {}).items()]
 have = {c: [s for s in ['hero', 'front34', 'side', 'rear34'] if os.path.exists(f'{IMG}/ext/{c}--{s}.webp')] for c in m['ext']}
 have = {c: s for c, s in have.items() if 'hero' in s}
+angmap = {c: [s for s in ['front34', 'side', 'rear34'] if os.path.exists(f'{IMG}/ext/{c}--{s}.webp')] for c in m.get('ang', [])}
+angmap = {c: s for c, s in angmap.items() if s}
 ints = [c for c in m['int'] if os.path.exists(f'{IMG}/int/{c}.webp')]
-data = {'car': CAR, 'short': SHORT, 'groups': groups, 'versions': vers, 'options': options, 'have': have, 'int': ints,
+data = {'car': CAR, 'short': SHORT, 'groups': groups, 'versions': vers, 'options': options, 'have': have, 'ang': angmap, 'int': ints,
         'paths': {'ext': IMG + '/ext/{code}--{shot}.webp', 'int': IMG + '/int/{code}.webp'},
         'shots': [{'id': 'hero', 'label': 'Студия'}, {'id': 'front34', 'label': 'Спереди ¾'}, {'id': 'side', 'label': 'Сбоку'}, {'id': 'rear34', 'label': 'Сзади ¾'}, {'id': 'int', 'label': 'Салон'}]}
 open(OUT, 'w').write('/* Данные конфигуратора ' + CAR + ': официальный конфигуратор zeekrlife.com, снято 11.11.2026 скриптами tools/. Цен нет намеренно. */\n'

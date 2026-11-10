@@ -103,14 +103,25 @@
     c = codeFor(V.interiorSkus, extras);
     return INT[c] ? c : null;
   }
+  // ракурсы у Zeekr строятся по своему списку групп (angleSkus), он бывает короче, чем у главного кадра
+  function angCode() {
+    var V = version();
+    if (!D.ang || !V.angleSkus) return extCode();
+    var c = codeFor(V.angleSkus);
+    return D.ang[c] ? c : null;
+  }
+  function angShots() {
+    if (D.ang && version().angleSkus) { var a = angCode(); return a ? D.ang[a] : []; }
+    return (D.have[extCode()] || []).filter(function (s) { return s !== "hero"; });
+  }
   function shotsNow() {
-    var have = D.have[extCode()] || ["hero"];
+    var have = ["hero"].concat(angShots());
     return D.shots.filter(function (s) { return s.id === "int" ? !!intCode() : have.indexOf(s.id) !== -1; });
   }
   function fixShot() { if (!shotsNow().some(function (s) { return s.id === state.shot; })) state.shot = "hero"; }
   function srcFor(shot) {
     if (shot === "int") return D.paths.int.replace("{code}", intCode());
-    return D.paths.ext.replace("{code}", extCode()).replace("{shot}", shot);
+    return D.paths.ext.replace("{code}", shot === "hero" ? extCode() : (angCode() || extCode())).replace("{shot}", shot);
   }
   var cache = {};
   function preload(src) {
@@ -239,7 +250,7 @@
     $("[data-slot=summary-config]").textContent = D.car + " " + V.name;
     $("[data-slot=summary-lines]").innerHTML = c.lines.map(function (l) { return '<div class="z9__row"><dt>' + esc(l[0]) + "</dt><dd>" + esc(l[1]) + "</dd></div>"; }).join("");
     $("[data-slot=stage-name]").textContent = D.car + " " + V.name;
-    $("[data-slot=stage-note]").textContent = [opt(selRole("paint")).name, opt(selRole("wheel")).name, "салон " + opt(selRole("int")).name].join(" · ");
+    $("[data-slot=stage-note]").textContent = [opt(selRole("paint")).name, opt(selRole("wheel")).name, selRole("int") ? "салон " + opt(selRole("int")).name : ""].filter(Boolean).join(" · ");
     if (history.replaceState) history.replaceState(null, "", c.hash);
     var detail = { text: c.text, lines: c.lines, config: c.codes, url: location.href.split("#")[0] + c.hash };
     window.ZeekrCfg = { get: function () { return detail; } };
