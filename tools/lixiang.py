@@ -46,6 +46,9 @@ GT = {'外观': 'Цвет кузова', '轮毂': 'Диски', '内饰': 'Цв
 VN = [('Livis', 'Livis', ''), ('Ultra', 'Ultra', ''), ('四驱高性能', 'Performance', 'Полный привод'), ('后驱长续航', 'Long Range', 'Задний привод'), ('Home', 'Home', '')]
 SHOTS = [{'id': 'hero', 'label': 'Студия'}, {'id': 'side', 'label': 'Сбоку'}, {'id': 'front34', 'label': 'Спереди'}, {'id': 'rear34', 'label': 'Сзади ¾'},
          {'id': 'wheel', 'label': 'Диск'}, {'id': 'int', 'label': 'Салон', 'kind': 'int'}, {'id': 'int2', 'label': 'Кресла', 'kind': 'int'}]
+# порядок трёх кадров кузова у Li Auto зависит от серии (проверено глазами по листу видов 12.11.2026)
+VIEW_ORDER = {'lixiang-i6': ['front34', 'rear34', 'side'], 'lixiang-i8': ['front34', 'rear34', 'side'], 'lixiang-i9': ['front34', 'rear34', 'side']}
+NO_WHEEL = {'lixiang-l6'}          # у L6 кадр «диск» – это второй вид сбоку, а не крупный план
 is_none = lambda n: n.startswith('无')
 
 
@@ -162,7 +165,7 @@ def sobrat(proj, car, short, slug):
             code = pre + code0
             have[code] = ['hero']; jobs.append((v['hero'], f'{proj}/{IMG}/ext/{code}--hero.webp', 'hero'))
             sh = []
-            for name, url in list(zip(['side', 'front34', 'rear34'], v['views'])) + [('wheel', v['wheel'])]:
+            for name, url in list(zip(VIEW_ORDER.get(slug, ['side', 'front34', 'rear34']), v['views'])) + ([] if slug in NO_WHEEL else [('wheel', v['wheel'])]):
                 if url: sh.append(name); jobs.append((url, f'{proj}/{IMG}/ext/{code}--{name}.webp', 'view'))
             ang[code] = sh
             parts = dict(zip(pr['extSkus'], code0.split('_')))
