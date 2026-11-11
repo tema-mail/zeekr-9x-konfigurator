@@ -67,11 +67,12 @@ def curl(url, dst):
 
 def webp(src, dst, kind):
     from PIL import Image
-    if os.path.exists(dst): return
+    if os.path.exists(dst) and os.path.getsize(dst) > 150: return
     im = Image.open(src)
-    if kind == 'icon': im = im.convert('RGBA'); im.thumbnail((112, 112)); im.save(dst, 'WEBP', quality=85, method=4)
-    elif kind == 'ext': im = im.convert('RGBA'); im.thumbnail((1400, 1400)); im.save(dst, 'WEBP', quality=82, method=4)
-    else: im = im.convert('RGB'); im.thumbnail((1280, 1280)); im.save(dst, 'WEBP', quality=80, method=4)
+    if kind == 'icon': im = im.convert('RGBA'); im.thumbnail((112, 112)); im.save(dst + '.part', 'WEBP', quality=85, method=4)
+    elif kind == 'ext': im = im.convert('RGBA'); im.thumbnail((1400, 1400)); im.save(dst + '.part', 'WEBP', quality=82, method=4)
+    else: im = im.convert('RGB'); im.thumbnail((1280, 1280)); im.save(dst + '.part', 'WEBP', quality=80, method=4)
+    os.replace(dst + '.part', dst)
 
 def sobrat(proj, car, short, slug):
     import hashlib, shutil

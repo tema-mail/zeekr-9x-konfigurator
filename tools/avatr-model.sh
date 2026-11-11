@@ -9,7 +9,7 @@ cd "$D"
 [ -d .git ] || git init -q -b main
 mkdir -p css js tools .github/workflows
 cp $SRC/css/konfigurator.css css/; cp $SRC/js/konfigurator.js js/
-cp $SRC/tools/avatr.py $SRC/tools/avatr_srv.py $SRC/tools/avatr-model.sh $SRC/tools/proverka.py $SRC/tools/ikonki-list.py tools/
+rm -f tools/proverka.py; cp $SRC/tools/avatr.py $SRC/tools/avatr_srv.py $SRC/tools/avatr-model.sh $SRC/tools/proverka_vps.py $SRC/tools/vps.py $SRC/tools/srv_run.py $SRC/tools/ikonki-list.py tools/
 cp $SRC/.github/workflows/pages.yml .github/workflows/; cp $SRC/robots.txt $SRC/.gitignore $SRC/.nojekyll .
 sed "s/Zeekr 9X/$CAR/g" $SRC/index.html > index.html
 python3 tools/avatr.py sobrat . "$CAR" "$SHORT" "avatr-$SLUG"

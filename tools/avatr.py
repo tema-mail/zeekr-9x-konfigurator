@@ -13,7 +13,7 @@ RU = {
  '弦月银': 'Серебристый «Полумесяц»', '星紫': 'Фиолетовый «Звезда»', '岩灰': 'Серый «Скала»', '漠白': 'Белый «Пустыня»', '墨黑': 'Чёрный «Тушь»', '晴蓝': 'Голубой «Ясное небо»',
  '苍绿': 'Зелёный «Лес»', '曜黑': 'Чёрный «Сияние»', '曜灰': 'Серый «Сияние»', '皓白/黑顶': 'Белый с чёрной крышей', '云紫': 'Фиолетовый «Облако»',
  '烟紫/黑顶': 'Дымчато-фиолетовый с чёрной крышей', '丹红/黑顶': 'Красный с чёрной крышей', '皓白': 'Белый «Сияние»', '鎏棕': 'Коричневый с золотом',
- '烟紫/曜黑双拼': 'Двухцветный: дымчато-фиолетовый с чёрным', '曦金灰': 'Серо-золотой «Рассвет»',
+ '烟紫/曜黑双拼': 'Двухцветный: дымчато-фиолетовый с чёрным', '曦金灰': 'Серо-золотой «Рассвет»', '曜灰/曜黑双拼': 'Двухцветный: серый с чёрным', '皇家剧院': 'Royal Theatre',
  # диски
  '20英寸旋叶轮毂': '20″ «Лопасти»', '21英寸气旋轮毂': '21″ «Циклон»', '20英寸低风阻轮毂': '20″ аэродинамические', '21英寸运动多辐轮毂': '21″ спортивные многоспицевые',
  '20英寸气旋五辐运动轮毂': '20″ спортивные «Циклон», 5 спиц', '20英寸气旋五辐运动轮毂(配米其林高性能轮胎)': '20″ спортивные «Циклон» с шинами Michelin',
@@ -73,7 +73,7 @@ def inpaint(im, box, kind):
 
 def fetch_img(url, dst, kind, masks=None):
     from PIL import Image
-    if os.path.exists(dst): return 'skip'
+    if os.path.exists(dst) and os.path.getsize(dst) > 300: return 'skip'      # пустой файл от прерванной сборки готовым не считаем
     if not url: return 'нет'
     tmp = tempfile.mktemp(suffix='.png')
     try:
@@ -83,17 +83,17 @@ def fetch_img(url, dst, kind, masks=None):
                 try: im = Image.open(tmp); im.load()
                 except Exception: continue
                 if kind == 'icon':
-                    im = im.convert('RGBA'); im.thumbnail((112, 112)); im.save(dst, 'WEBP', quality=85, method=6)
+                    im = im.convert('RGBA'); im.thumbnail((112, 112)); im.save(dst + '.part', 'WEBP', quality=85, method=6)
                 elif kind == 'ext':
                     im = im.convert('RGBA'); w, h = im.size
                     for box, mk in (masks or []): inpaint(im, box, mk)
                     im = im.crop((0, int(h * 0.16), w, int(h * 0.78)))          # без строки-оговорки внизу
-                    im.thumbnail((1400, 1400)); im.save(dst, 'WEBP', quality=82, method=6)
+                    im.thumbnail((1400, 1400)); im.save(dst + '.part', 'WEBP', quality=82, method=6)
                 else:
                     im = im.convert('RGB'); w, h = im.size
                     im = im.crop((0, 0, w, int(h * 0.80)))                       # оговорка поверх нижней части кадра
-                    im = im.resize((1280, int(1280 * im.size[1] / w)), Image.LANCZOS); im.save(dst, 'WEBP', quality=78, method=6)
-                return 'ok'
+                    im = im.resize((1280, int(1280 * im.size[1] / w)), Image.LANCZOS); im.save(dst + '.part', 'WEBP', quality=78, method=6)
+                os.replace(dst + '.part', dst); return 'ok'
         return 'нет'
     finally:
         if os.path.exists(tmp): os.remove(tmp)

@@ -8,7 +8,7 @@ JS = r'''
 async (page) => {
   const U = %URL%; const out = { errs: [], bad: [], fails: [] };
   page.on('pageerror', e => out.errs.push(String(e).slice(0, 200)));
-  page.on('response', r => { if (r.status() >= 400) out.bad.push(r.status() + ' ' + r.url().slice(-80)); });
+  const seenBad = new Set(); page.on('response', r => { if (r.status() >= 400) seenBad.add(r.url()); });
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(U + '?t=' + Date.now(), { waitUntil: 'load', timeout: 60000 }); await page.waitForTimeout(2500);
   out.title = await page.title();
@@ -24,7 +24,11 @@ async (page) => {
       return { alien: code.split('_').filter(t => t && sel.indexOf(t) === -1), w: im.naturalWidth, stale: (isExt && want && D.have[want] && src !== want) ? want + ' вместо него ' + src : '' }; });
     if (r.stale) out.fails.push(what + ': кадр кузова не тот, ждали ' + r.stale);
     if (r.alien.length) out.fails.push(what + ': на картинке чужие опции ' + r.alien.join(','));
-    if (!r.w) out.fails.push(what + ': картинка пустая');
+    if (!r.w) {   // GitHub Pages иногда отвечает 503 на отдельный файл: даём вторую попытку, прежде чем считать кадр пустым
+      await page.waitForTimeout(3000);
+      const w2 = await page.evaluate(() => new Promise(res => { const im = document.querySelector('.z9__shot.is-front img'); const u = im.currentSrc.split('?')[0] + '?r=' + Date.now(); im.onload = () => res(im.naturalWidth); im.onerror = () => res(0); im.src = u; }));
+      if (!w2) out.fails.push(what + ': картинка пустая');
+    }
   };
   let clicks = 0;
   const groups = await page.$$eval('[data-group]', e => e.map(x => x.dataset.group));
@@ -49,8 +53,12 @@ async (page) => {
     for (const c of D.int) for (const sh of D.shots.filter(x => x.id === 'int' || x.kind === 'int')) list.push(D.paths.int.replace('{code}', c).replace('{shot}', sh.id));
     for (const k in D.options) if (D.options[k].icon) list.push(D.options[k].icon);
     list = [...new Set(list)];
-    for (let i = 0; i < list.length; i += 12) await Promise.all(list.slice(i, i + 12).map(async u => { const r = await fetch(u, { method: 'HEAD' }); if (!r.ok) bad.push(u); }));
+    const head = async u => { try { const r = await fetch(u, { method: 'HEAD', cache: 'no-store' }); const n = +(r.headers.get('content-length') || 1e6); return r.ok && n > 150; } catch (e) { return false; } };   // пустой файл (0 байт) – тоже битая картинка
+    for (let i = 0; i < list.length; i += 8) await Promise.all(list.slice(i, i + 8).map(async u => { if (!(await head(u))) bad.push(u); }));
+    for (let a = 0; a < 3 && bad.length; a++) { await new Promise(r => setTimeout(r, 4000)); const still = []; for (const u of bad) if (!(await head(u))) still.push(u); bad = still; }   // 503 у Pages – временный
     return { n: list.length, bad: bad.slice(0, 5) }; });
+  // ответы с ошибкой за время проверки: оставляем только те адреса, которые не открылись и повторно
+  out.bad = await page.evaluate(async (urls) => { const res = []; for (const u of urls) { let ok = false; for (let a = 0; a < 3 && !ok; a++) { try { ok = (await fetch(u.split('?')[0], { method: 'HEAD', cache: 'no-store' })).ok; } catch (e) {} if (!ok) await new Promise(r => setTimeout(r, 3000)); } if (!ok) res.push(u.slice(-80)); } return res; }, [...seenBad]);
   out.cjk = await page.evaluate(() => (document.body.innerText.match(/[㐀-鿿＀-￯]+/g) || []).slice(0, 5));
   const shot = async () => (await page.screenshot({ type: 'jpeg', quality: 55 })).toString('base64');
   out.pic_d = await shot();

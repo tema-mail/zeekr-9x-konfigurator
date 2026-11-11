@@ -9,10 +9,11 @@ cd "$D"
 [ -d .git ] || git init -q -b main
 mkdir -p css js tools .github/workflows
 cp $SRC/css/konfigurator.css css/; cp $SRC/js/konfigurator.js js/
-cp $SRC/tools/lynkco.py $SRC/tools/lynkco_snyat.py $SRC/tools/lynkco-model.sh $SRC/tools/proverka_vps.py $SRC/tools/vps.py $SRC/tools/srv_run.py $SRC/tools/ikonki-list.py tools/
+cp $SRC/tools/lynkco.py $SRC/tools/lynkco_snyat.py $SRC/tools/lynkco-model.sh $SRC/tools/proverka_vps.py $SRC/tools/proverka_kadrov.py $SRC/tools/vps.py $SRC/tools/srv_run.py $SRC/tools/ikonki-list.py tools/
 cp $SRC/.github/workflows/pages.yml .github/workflows/; cp $SRC/robots.txt $SRC/.gitignore $SRC/.nojekyll .
 CARH=${CAR//&/\\&amp;}; sed "s/Zeekr 9X/$CARH/g" $SRC/index.html > index.html
 python3 tools/lynkco.py sobrat . "$CAR" "$SHORT" "lynkco-$SLUG"
+python3 tools/proverka_kadrov.py .
 python3 - "$CAR" "$SLUG" <<'EOF'
 import json, sys, os
 car, slug = sys.argv[1:3]
