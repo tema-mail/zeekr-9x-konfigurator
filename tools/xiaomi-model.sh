@@ -1,5 +1,5 @@
 #!/bin/bash
-# Перенести конфигуратор модели Xiaomi из проекта сайта на общий движок и выложить
+# Собрать и выложить конфигуратор модели Xiaomi. Перед этим снять raw/xiaomi-api.json (tools/xiaomi_snyat.py <goodsId> .)
 # Запуск: xiaomi-model.sh <slug> "<Xiaomi SU7>" "<SU7>"     (NOPUSH=1 – без выкладки)
 set -e
 SLUG=$1; CAR=$2; SHORT=$3
@@ -9,13 +9,12 @@ cd "$D"
 [ -d .git ] || git init -q -b main
 mkdir -p css js tools .github/workflows
 cp $SRC/css/konfigurator.css css/; cp $SRC/js/konfigurator.js js/
-cp $SRC/tools/xiaomi.py $SRC/tools/xiaomi-model.sh $SRC/tools/proverka.py $SRC/tools/ikonki-list.py tools/
+rm -f tools/proverka.py tools/xiaomi.py; cp $SRC/tools/xiaomi_api.py $SRC/tools/xiaomi_snyat.py $SRC/tools/xiaomi-model.sh $SRC/tools/proverka_vps.py $SRC/tools/proverka_kadrov.py $SRC/tools/vps.py $SRC/tools/srv_run.py $SRC/tools/ikonki-list.py tools/
 cp $SRC/.github/workflows/pages.yml .github/workflows/; cp $SRC/robots.txt $SRC/.gitignore $SRC/.nojekyll .
 sed "s/Zeekr 9X/$CAR/g" $SRC/index.html > index.html
-SITE=~/Documents/evolution-car-by
-mkdir -p raw
-~/.local/node/bin/node --input-type=module -e "const m=await import('$SITE/src/content/models/xiaomi-$SLUG-config.ts');(await import('node:fs')).writeFileSync('raw/xiaomi-raw.json',JSON.stringify({...m}));" 2>/dev/null
-python3 tools/xiaomi.py sobrat . "$CAR" "$SHORT" "xiaomi-$SLUG" "$SITE/public/img/xiaomi-$SLUG"
+[ -f raw/xiaomi-api.json ] || { echo "нет raw/xiaomi-api.json: сначала python3 tools/xiaomi_snyat.py <goodsId> ."; exit 1; }
+python3 tools/xiaomi_api.py sobrat . "$CAR" "$SHORT" "xiaomi-$SLUG"
+python3 tools/proverka_kadrov.py .
 python3 - "$CAR" "$SLUG" <<'EOF'
 import json, sys, os
 car, slug = sys.argv[1:3]
@@ -37,17 +36,20 @@ open('README.md', 'w').write(f'''# Конфигуратор {car}
 
 ## Что выбирает человек
 Версия ({vers}); {', '.join(g.lower() for g in groups)}{('; дополнительно – ' + ', '.join(x.lower() for x in ex)) if ex else ''}.
-Варианты взяты из официального конфигуратора Xiaomi (xiaomiev.com).
+Варианты и несовместимые сочетания взяты из официального конфигуратора Xiaomi (xiaomiev.com).
 
 ## Картинки
-Официальные кадры конфигуратора Xiaomi EV: три вида кузова в студии (сбоку, спереди, сзади) для каждого сочетания
-цвета и дисков и два вида салона для каждой отделки. Кадры собраны из слоёв сцены Xiaomi: фон, кузов, диски.
+Официальные кадры конфигуратора Xiaomi EV в студии: пять видов кузова (спереди, сбоку, сзади, строго спереди и строго сзади)
+для каждого сочетания версии, цвета и дисков и два вида салона для каждой отделки. Готовых кадров Xiaomi не отдаёт:
+кадр собирается из слоёв сцены 5000×2812 по правилу самого сайта (фон, кузов, диски), затем машина вырезается крупно, 1600×1000.
+Значки цвета, дисков и салона – официальные. Китайский шильдик на крышке багажника закрашен.
 {len(d['have'])} сборок кузова, {len(d['int'])} вариантов салона, всё в WebP.
 
 {embed}## Как обновить данные
-Исходные кадры и переводы лежат в проекте сайта evolution-car-by (src/content/models/xiaomi-*-config.ts, public/img/xiaomi-*).
-`tools/xiaomi-model.sh {slug} "{car}" "{car.replace('Xiaomi ', '')}"` переносит их на общий движок, проверяет и выкладывает (NOPUSH=1 – без выкладки).
-Сайт xiaomiev.com с сервера в Нидерландах не открывается; новый съём – с адреса, которому сайт отвечает.
+1. `python3 tools/xiaomi_snyat.py <goodsId> .` – пишет `raw/xiaomi-api.json` (goodsId – из адреса xiaomiev.com/configurator/select-version?goodsId=…).
+   API открытый, браузер не нужен; с сервера в Нидерландах сайт не открывается, запрос идёт напрямую.
+2. `tools/xiaomi-model.sh {slug} "{car}" "{car.replace('Xiaomi ', '')}"` – слои, кадры, данные, проверки и выкладка (NOPUSH=1 – без выкладки).
+   Новое китайское название сборка не пропустит: перевод добавить в RU в tools/xiaomi_api.py. Координаты закраски шильдика – MASKS там же.
 Движок и стили общие с конфигураторами Zeekr, мастер-копия – репозиторий tema-mail/zeekr-9x-konfigurator.
 
 Кадры сняты 17.10.2026.
