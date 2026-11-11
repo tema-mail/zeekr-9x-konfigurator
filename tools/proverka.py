@@ -16,7 +16,14 @@ with sync_playwright() as p:
             pg.click(f'[data-version="{v}"]'); pg.wait_for_timeout(150)
             for pc in pg.eval_on_selector_all('[data-slot=groups] [data-pc]', 'e=>e.map(x=>x.dataset.pc)'):
                 if pg.locator(f'[data-pc="{pc}"]').count() == 0: continue
-                pg.click(f'[data-pc="{pc}"]'); pg.wait_for_timeout(60); clicks += 1
+                pg.click(f'[data-pc="{pc}"]'); clicks += 1
+                # картинка должна быть от выбранной сборки: все коды из имени файла есть в выборе
+                try: pg.wait_for_function('!document.querySelector(".z9__stage").classList.contains("is-loading")', timeout=8000)
+                except Exception: fails.append(f'версия {v}, опция {pc}: картинка не загрузилась')
+                r = pg.evaluate('''()=>{const src=document.querySelector(".z9__shot.is-front img").currentSrc.split("/").pop().replace(".webp","").split("--")[0];
+                    const code=src.includes("-")?src.split("-").slice(1).join("-"):src; const sel=window.ZeekrCfg.get().config;
+                    return code.split("_").filter(t=>t && sel.indexOf(t)===-1)}''')
+                if r: fails.append(f'версия {v}, опция {pc}: на картинке чужие опции {r}')
                 # выбранное должно остаться выбранным (кроме подстройки правилами – тогда хотя бы одна кнопка группы активна)
             for cb in pg.eval_on_selector_all('[data-extra]:not([disabled])', 'e=>e.map(x=>x.dataset.extra)'):
                 pg.click(f'[data-extra="{cb}"]'); pg.wait_for_timeout(60); clicks += 1

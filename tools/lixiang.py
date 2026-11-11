@@ -34,8 +34,8 @@ RU = {
  '灰棕色内饰': 'Серо-коричневый', '橙黄色内饰': 'Оранжево-жёлтый', '白灰双色内饰': 'Белый с серым', '雪原白双色内饰': 'Белый «Снежная равнина»', '旷野棕双色内饰': 'Коричневый «Простор»',
  '琥珀橙双色内饰': 'Оранжевый «Янтарь»',
  # декор, звук, привод
- '银色套件': 'Серебристый декор', '曜黑专属运动设计套件': 'Чёрный спортивный пакет', '高级音响': 'Premium', '铂金音响': 'Platinum', '理想Home剧院音响': '«Театр»',
- '理想Home音乐厅': '«Концертный зал»', '无瑕星环剧院音响': 'Аудиосистема «Звёздное кольцо»', '双电机四驱': '2 мотора, полный привод', '后驱': 'Задний привод',
+ '银色套件': 'Серебристый декор', '曜黑专属运动设计套件': 'Чёрный спортивный пакет', '高级音响': 'Аудиосистема Premium', '铂金音响': 'Аудиосистема Platinum', '理想Home剧院音响': 'Аудиосистема «Театр»',
+ '理想Home音乐厅': 'Аудиосистема «Концертный зал»', '无瑕星环剧院音响': 'Аудиосистема «Звёздное кольцо»', '双电机四驱': '2 мотора, полный привод', '后驱': 'Задний привод',
  # дополнительно
  '双马赫M100套装': 'Пакет с двумя чипами M100', '后舱娱乐屏套装': 'Экран для задних пассажиров', '后舱21英寸4K移动屏': 'Экран 21″ 4K для задних пассажиров',
  '电动拖车钩': 'Электрический фаркоп', '隐藏式电动踏板': 'Выдвижные пороги', '二三排电动调光玻璃': 'Затемняемые стёкла второго и третьего ряда',
@@ -132,7 +132,7 @@ def sobrat(proj, car, short, slug):
         return RU[cn]
     jobs, options, vers, have, ang, ints = [], {}, [], {}, {}, set()
     for pr in raw['products']:
-        vname = next(((n, t) for k, n, t in VN if k in pr['name']), (short, ''))
+        vname = next(((n, t) for k, n, t in VN if k in pr['name']), ('Стандартная', ''))
         dfl = pr['defaults']; secs = []; extras = []
         paint_sku = next((str(o['id']) for o in pr['options'] if o['name'] == '外观'), None)
         int_sku = next((str(o['id']) for o in pr['options'] if o['name'] == '内饰'), None)
@@ -178,6 +178,21 @@ def sobrat(proj, car, short, slug):
     have = {c: s for c, s in have.items() if ex_(f'{IMG}/ext/{c}--hero.webp')}
     ang = {c: [x for x in s if ex_(f'{IMG}/ext/{c}--{x}.webp')] for c, s in ang.items() if c in have}
     ints = sorted(c for c in ints if ex_(f'{IMG}/int/{c}--int.webp') and ex_(f'{IMG}/int/{c}--int2.webp'))
+    # правила совместимости: пара опций несовместима, если ни в одной версии, где есть обе, нет сборки с кадром
+    seen, together = set(), set()
+    for pr in raw['products']:
+        pre = pr['productId'][-6:] + '-'
+        ids = [[str(i['id']) for i in o['items']] for o in pr['options'] if str(o['id']) in pr['extSkus']]
+        for a, b in itertools.combinations(range(len(ids)), 2):
+            for x in ids[a]:
+                for y in ids[b]: seen.add((x, y))
+        for code0 in pr['variants']:
+            if pre + code0 in have:
+                parts = code0.split('_')
+                for x, y in itertools.combinations(parts, 2): together.add((x, y))
+    for x, y in sorted(seen - together):
+        if x in options and y in options:
+            options[x]['mutex'].append(y); print('несовместимы:', options[x]['name'], '+', options[y]['name'])
     for o in options.values():
         if o['icon'] and not ex_(o['icon']): o['icon'] = None
     for v in vers:                                                   # без иконки цвет или салон показываем кнопкой с названием
