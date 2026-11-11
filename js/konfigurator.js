@@ -107,15 +107,16 @@
     c = pre(V) + codeFor(V.interiorSkus, extras);
     return INT[c] ? c : null;
   }
+  var HAS_ANG = !!D.ang && Object.keys(D.ang).length > 0;   // пустая карта ракурсов = её нет, берём виды из D.have
   // ракурсы у Zeekr строятся по своему списку групп (angleSkus), он бывает короче, чем у главного кадра
   function angCode() {
     var V = version();
-    if (!D.ang || !V.angleSkus) return extCode();
+    if (!HAS_ANG || !V.angleSkus) return extCode();
     var c = pre(V) + codeFor(V.angleSkus);
     return D.ang[c] ? c : null;
   }
   function angShots() {
-    if (D.ang && version().angleSkus) { var a = angCode(); return a ? D.ang[a] : []; }
+    if (HAS_ANG && version().angleSkus) { var a = angCode(); return a ? D.ang[a] : []; }
     return (D.have[extCode()] || []).filter(function (s) { return s !== "hero"; });
   }
   // виды салона: id "int" или kind "int" (у некоторых марок их два: панель и кресла)

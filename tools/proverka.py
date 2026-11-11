@@ -22,6 +22,9 @@ with sync_playwright() as p:
                 pg.click(f'[data-extra="{cb}"]'); pg.wait_for_timeout(60); clicks += 1
             cur = pg.evaluate('document.querySelector(".z9__shot.is-front img").currentSrc')
             if not cur or cur.endswith('null') or 'undefined' in cur: fails.append(f'версия {v}: нет картинки {cur}')
+        # все ли кадры с диска достижимы: число картинок в данных против числа видов, которые показывает страница по умолчанию
+        pg.goto(U.split('#')[0], wait_until='networkidle')
+        print('видов по умолчанию:', pg.eval_on_selector_all('[data-shot]', 'e=>e.map(x=>x.dataset.shot).join(",")'))
         t = pg.evaluate('window.ZeekrCfg.get()')
         print('кликов', clicks, '| сборка:', t['text'][:150])
         pg.screenshot(path=f'{OUT}/proverka-d.png')
