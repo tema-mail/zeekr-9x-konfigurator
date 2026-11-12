@@ -85,6 +85,26 @@
       }
       fixed.push(state.sel[g.sku]);
     });
+    // галочка, которую выбранный вариант требует (need) или исключает (mutex), ставится или снимается сама
+    var ex = groupsOf(V).filter(function (g) { return g.role === "extra"; });
+    ex.forEach(function (g) { var l = lockOf(g); if (l) state.sel[g.sku] = l === "on" ? g.opts[0].id : null; });
+    // две галочки, которые не ставятся вместе (два пакета на выбор): остаётся обязательная или отмеченная последней
+    ex.forEach(function (g, i) {
+      ex.slice(i + 1).forEach(function (h) {
+        var a = state.sel[g.sku], b = state.sel[h.sku]; if (!a || !b || !conflict(a, b)) return;
+        var keepG = g.opts[0].def || lockOf(g) === "on" || (g.sku === prioSku && lockOf(h) !== "on" && !h.opts[0].def);
+        state.sel[keepG ? h.sku : g.sku] = null;
+      });
+    });
+  }
+  function lockOf(g) {
+    var id = g.opts[0].id, r = null;
+    if (g.opts[0].def) return null;
+    groupsOf(version()).forEach(function (c) {
+      var s = state.sel[c.sku]; if (c.role === "extra" || !s) return;
+      if ((opt(s).need || []).indexOf(id) !== -1) r = "on"; else if (!r && conflict(s, id)) r = "off";
+    });
+    return r;
   }
 
   // ---------- картинки ----------
@@ -221,8 +241,9 @@
     var extras = V.secs.filter(function (g) { return g.role === "extra"; });
     if (extras.length) {
       html += '<div class="z9__block"><div class="z9__head"><h2 class="z9__title">Дополнительно</h2></div><div class="z9__checks">' + extras.map(function (g) {
-        var o = g.opts[0], on = state.sel[g.sku] === o.id;
-        return '<label class="z9__check"><input type="checkbox" data-extra="' + g.sku + '" value="' + o.id + '"' + (on ? " checked" : "") + (o.def ? " disabled" : "") + "> " + esc(opt(o.id).name) + (o.def ? " <small>в комплектации</small>" : "") + "</label>";
+        var o = g.opts[0], on = state.sel[g.sku] === o.id, lock = lockOf(g);
+        var why = o.def ? "в комплектации" : lock === "on" ? "идёт с выбранным вариантом" : lock === "off" ? "не ставится с выбранным вариантом" : "";
+        return '<label class="z9__check"><input type="checkbox" data-extra="' + g.sku + '" value="' + o.id + '"' + (on ? " checked" : "") + (o.def || lock ? " disabled" : "") + "> <span>" + esc(opt(o.id).name) + (why ? " <small>" + why + "</small>" : "") + "</span></label>";
       }).join("") + "</div></div>";
     }
     $("[data-slot=groups]").innerHTML = html;
@@ -303,7 +324,7 @@
       state.sel[sku] = e.target.checked ? e.target.value : null;
       // галочка, от которой зависит кадр кузова (зеркала, обвес, спойлер): показываем кузов и обновляем картинку
       if ((version().vehicleSkus || []).indexOf(sku) !== -1 && isInt(state.shot)) state.shot = "hero";
-      update(null, false);
+      update(sku, false);
       if (srcFor(state.shot) !== before) show();
     }
     if (e.target.name === "agree") $("form.z9__form button[type=submit]").disabled = !e.target.checked;

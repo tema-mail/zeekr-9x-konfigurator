@@ -1,10 +1,11 @@
 """Обзорные листы кадров конфигуратора – смотреть глазами перед выкладкой (правило после салона Xiaomi без руля, 12.11.2026).
   python3 obzor.py <папка проекта> <папка для листов>
 Салон: КАЖДЫЙ разный кадр салона (одинаковые по содержимому показываются один раз, с числом повторов).
-Кузов: по каждой версии – все виды сборки по умолчанию и главный кадр каждого цвета.
+Кузов: по каждой версии – все виды сборки по умолчанию и главный кадр каждого цвета; с третьим параметром vse – каждый разный кадр кузова.
 На что смотреть: руль, сиденья, экраны, зеркала, диски, антикрыло на месте; нет обрезанной машины, пустых областей, иероглифов."""
 import json, os, sys, hashlib, collections
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
+FONT = next((ImageFont.truetype(p, 11) for p in ('/System/Library/Fonts/Supplemental/Arial.ttf', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf') if os.path.exists(p)), None)   # встроенный шрифт PIL не знает кириллицы
 proj, out = sys.argv[1], sys.argv[2]; os.makedirs(out, exist_ok=True)
 name = os.path.basename(os.path.abspath(proj)).replace('-konfigurator', '')
 d = json.loads(open(f'{proj}/js/zeekr-data.js').read().split('window.ZEEKR_CFG = ', 1)[1].rstrip().rstrip(';'))
@@ -18,7 +19,7 @@ def sheet(cells, cols, cw, ch, path, per=28):
             try:
                 im = Image.open(f).convert('RGBA'); bg = Image.new('RGBA', im.size, (238, 238, 238, 255)); bg.alpha_composite(im); im = bg.convert('RGB'); im.thumbnail((cw - 4, ch)); sh.paste(im, (x + 2, y + 13))
             except Exception as e: dr.text((x + 4, y + 30), 'НЕ ОТКРЫВАЕТСЯ', fill=(255, 0, 0))
-            dr.text((x + 3, y + 1), label[:int(cw / 6.2)], fill=(0, 0, 0))
+            dr.text((x + 3, y + 1), label[:int(cw / 6.2)], fill=(0, 0, 0), font=FONT)
         p = f'{path}-{part // per + 1}.png'; sh.save(p); files.append(p)
     return files
 ish = [s['id'] for s in d['shots'] if s['id'] == 'int' or s.get('kind') == 'int']
@@ -28,7 +29,7 @@ for c in d['int']:
         f = f'{proj}/' + d['paths']['int'].replace('{code}', c).replace('{shot}', s)
         if not os.path.exists(f): continue
         h = hashlib.md5(open(f, 'rb').read()).hexdigest(); seen.setdefault(h, [f, f'{c} {s}', 0]); seen[h][2] += 1
-files = sheet([(f, f'{lab} ×{n}') for f, lab, n in seen.values()], 4, 350, 220, f'{out}/{name}-salon', 24)
+files = sheet([(f, f'{lab} x{n}') for f, lab, n in seen.values()], 5, 280, 176, f'{out}/{name}-salon', 40)
 cells = []
 for v in d['versions']:
     by = {s['sku']: s for s in v['secs']}
@@ -42,5 +43,15 @@ for v in d['versions']:
     for o in (paint['opts'] if paint else []):
         c = code(dict(dsel, **{paint['sku']: o['id']}))
         if c != c0 and c in d['have']: cells.append((f'{proj}/' + d['paths']['ext'].replace('{code}', c).replace('{shot}', 'hero'), f'{v["name"]} | {d["options"][o["id"]]["name"]}'))
-files += sheet(cells, 4, 350, 220, f'{out}/{name}-kuzov', 24)
-print(name, 'разных кадров салона', len(seen), 'кадров кузова в обзоре', len(cells)); print('\n'.join(files))
+if len(sys.argv) > 3 and sys.argv[3] == 'vse':                      # режим «vse»: каждый разный кадр кузова, а не только цвета сборки по умолчанию
+    cells = []
+    for c, shots in d['have'].items():
+        toks = [d['options'].get(t) or d['options'].get(t.split('-')[-1]) or {} for t in c.split('_')]
+        lab = c.split('-')[0] + ' ' + '/'.join((o.get('name') or '?')[:13] for o in toks)
+        for s in shots: cells.append((f'{proj}/' + d['paths']['ext'].replace('{code}', c).replace('{shot}', s), f'{s[:4]} {lab}'))
+uniq = collections.OrderedDict()                                   # одинаковые по содержимому кадры кузова (у версий они часто общие) – один раз
+for f, lab in cells:
+    if not os.path.exists(f): uniq[f] = [f, lab, 1]; continue
+    h = hashlib.md5(open(f, 'rb').read()).hexdigest(); uniq.setdefault(h, [f, lab, 0]); uniq[h][2] += 1
+files += sheet([(f, f'{lab} x{n}') for f, lab, n in uniq.values()], 6, 264, 150, f'{out}/{name}-kuzov', 60) if len(sys.argv) > 3 else sheet([(f, f'{lab} x{n}') for f, lab, n in uniq.values()], 5, 280, 176, f'{out}/{name}-kuzov', 40)
+print(name, 'разных кадров салона', len(seen), 'разных кадров кузова в обзоре', len(uniq), 'из', len(cells)); print('\n'.join(files))

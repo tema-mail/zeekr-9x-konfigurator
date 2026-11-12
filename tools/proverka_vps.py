@@ -23,6 +23,13 @@ async (page) => {
       const isExt = im.currentSrc.indexOf(D.paths.ext.split('{code}')[0]) !== -1 && /--hero\.webp/.test(im.currentSrc);
       return { alien: code.split('_').filter(t => t && sel.indexOf(t) === -1), w: im.naturalWidth, stale: (isExt && want && D.have[want] && src !== want) ? want + ' вместо него ' + src : '' }; });
     if (r.stale) out.fails.push(what + ': кадр кузова не тот, ждали ' + r.stale);
+    // правила сборки: выбранный вариант требует галочку (need) или исключает её (mutex); вместе несовместимое стоять не должно
+    const rule = await page.evaluate(() => { const D = window.ZEEKR_CFG, sel = window.ZeekrCfg.get().config, bad = [];
+      for (const a of sel) { const o = D.options[a] || {};
+        for (const n of (o.need || [])) if (document.querySelector('[data-extra][value="' + n + '"]') && sel.indexOf(n) === -1) bad.push(a + ' требует ' + n);
+        for (const b of sel) if (a < b && ((o.mutex || []).indexOf(b) !== -1 || ((D.options[b] || {}).mutex || []).indexOf(a) !== -1)) bad.push(a + ' несовместимо с ' + b); }
+      return bad; });
+    if (rule.length) out.fails.push(what + ': нарушено правило ' + rule.join('; '));
     if (r.alien.length) out.fails.push(what + ': на картинке чужие опции ' + r.alien.join(','));
     if (!r.w) {   // GitHub Pages иногда отвечает 503 на отдельный файл: даём вторую попытку, прежде чем считать кадр пустым
       await page.waitForTimeout(3000);

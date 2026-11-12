@@ -134,7 +134,7 @@ body { margin: 0; background: var(--z9-bg); color: var(--z9-text); font-family: 
 
 .z9__checks { display: grid; gap: .5rem; }
 .z9__check { display: flex; gap: .6rem; align-items: center; font-size: .9375rem; cursor: pointer; }
-.z9__check input { width: 1.1rem; height: 1.1rem; accent-color: var(--z9-accent); }
+.z9__check input { flex: none; width: 1.1rem; height: 1.1rem; accent-color: var(--z9-accent); }
 .z9__check small { color: var(--z9-text-3); }
 
 .z9__rows { display: grid; margin: 0; }
