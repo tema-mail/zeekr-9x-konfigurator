@@ -70,16 +70,29 @@ def items_of(cfg):
                         yield t, g, dict(ch, name=i['name'], defaultSelect=any(c.get('defaultSelect') for c in i['itemList']), configValueImage=img, _all=[c['ssuId'] for c in i['itemList']])
                     elif 'ssuId' in i: yield t, g, i
 
-def layers(v, sel, view):
+def selection(v):
+    """Полный выбор по умолчанию. У необязательной опции Xiaomi есть скрытый вариант «не выбрано» (defaultSsuNode): обычный руль,
+    штатные накладки и т. п. Их сайт подставляет сам; без них в кадре пропадают детали (салон без руля, 12.11.2026)."""
+    sel = {}
+    for t, g, i in items_of(v['cfg']):
+        d = i.get('defaultSsuNode') or {}
+        if d.get('itemIdentifier') and d.get('ssuId'): sel.setdefault(d['itemIdentifier'], d['ssuId'])
+    sel.update(v['cfg']['configurator']['defaultConfigSsuInfo']); sel['0_BB'] = v['ssuId']
+    return sel
+
+def layers(v, sel, view, page='CAR_CONFIG_OUTCOMEOUTSIDE_PAGE', comp='COLOR_PAGE_OUTCOME'):
     """Слои кадра по правилу сборки Xiaomi: [(url, x, y, w, h)] снизу вверх."""
-    page = v['mat']['pageMap']['CAR_CONFIG_OUTCOMEOUTSIDE_PAGE']; dp = page['dataPool']; out = []
-    for rule in page['componentMap']['COLOR_PAGE_OUTCOME']['combinationRule']:
+    pg = v['mat']['pageMap'].get(page) or {}; dp = pg.get('dataPool') or {}; out = []
+    for rule in ((pg.get('componentMap') or {}).get(comp) or {}).get('combinationRule') or []:
         for el in rule['elementList']:
             ssus = [sel.get(i) for i in el.split(',')]
             if any(s is None for s in ssus): continue
             mv = (dp.get('PC_' + rule['componentId'] + ':' + ':'.join(str(s) for s in ssus)) or {}).get('materialValueList') or []
             for x in mv:
-                if x.get('viewIdentityEnum') == view and x.get('payload') and x['width'] > 1: out.append((x['payload'], x['xCoordinate'], x['yCoordinate'], x['width'], x['height']))
+                if x.get('viewIdentityEnum') == view and x.get('payload') and x['width'] > 1:
+                    w, h = x['width'], x['height']
+                    if x['xCoordinate'] == 0 and x['yCoordinate'] == 0 and 2000 <= w < 5000 and abs(w / h - 5000 / 2812) < 0.02: w, h = 5000, 2812   # вся сцена, выложенная в меньшем размере
+                    out.append((x['payload'], x['xCoordinate'], x['yCoordinate'], w, h))
     return out
 
 def sobrat(proj, car, short, slug):
@@ -96,10 +109,10 @@ def sobrat(proj, car, short, slug):
         k = (role, re.sub(r'\s+', '', cn))
         if k not in reg: reg[k] = f'{role[0]}{len([x for x in reg if x[0] == role]) + 1}'
         return reg[k]
-    options, vers, have, ints, frames, icons, intjobs, mut = {}, [], {}, [], [], {}, {}, collections.defaultdict(set)
+    options, vers, have, ints, frames, iframes, icons, mut = {}, [], {}, [], [], [], {}, collections.defaultdict(set)
     for vi, v in enumerate(raw['versions']):
         cfg = v['cfg']; pre = f'v{vi}-'; pm = v['mat']['pageMap']
-        dflt = dict(cfg['configurator']['defaultConfigSsuInfo']); dflt['0_BB'] = v['ssuId']
+        dflt = selection(v)
         ins = (pm.get('INSIDE_PAGE') or {}).get('dataPool') or {}
         byrole = {'paint': [], 'wheel': [], 'int': []}; ssu2opt = {}
         for t, g, i in items_of(cfg):
@@ -125,11 +138,12 @@ def sobrat(proj, car, short, slug):
                 options.setdefault(pc, {'name': nm, 'note': note, 'icon': icon, 'mutex': [], 'cascade': [], 'sku': role})
                 ops.append({'id': pc, 'def': bool(i.get('defaultSelect')) or dflt.get(i.get('itemIdentifier')) in ([i['ssuId']] + (i.get('_all') or [])), 'promo': False, 'promoTo': ''})
                 if role == 'int':
-                    mv = {x.get('viewIdentityEnum'): x['payload'] for x in (ins.get(f'PC_INSIDE_CAR_CONFIG_OUTCOME_CROPPING:{i["ssuId"]}') or {}).get('materialValueList') or [] if x.get('width', 0) > 1}   # 1×1 – заглушка
-                    a, b = mv.get('2d_frontRow_DRIVER') or mv.get('2d_frontRow_PAX'), mv.get('2d_backRow_CNTR')
+                    isel = dict(dflt, **{'1_NSYS': i['ssuId']}); full = lambda ls: bool(ls) and ls[0][3] >= 4000      # салон тоже собирается из слоёв: основа + руль, накладки, экраны
+                    il = lambda view: layers(v, isel, view, 'INSIDE_PAGE', 'INSIDE_COMBINATION_OUTCOME')
+                    a = next((il(vw) for vw in ('2d_frontRow_DRIVER', '2d_frontRow_PAX') if full(il(vw))), None); b = il('2d_backRow_CNTR')
                     if a:
-                        code = pre + pc; ints.append(code); intjobs[f'{proj}/{IMG}/int/{code}--int.webp'] = a
-                        if b: intjobs[f'{proj}/{IMG}/int/{code}--int2.webp'] = b
+                        code = pre + pc; ints.append(code); iframes.append((f'{proj}/{IMG}/int/{code}--int.webp', 'int', a, None))
+                        if full(b): iframes.append((f'{proj}/{IMG}/int/{code}--int2.webp', 'int2', b, None))
             if ops:
                 if not any(o['def'] for o in ops): ops[0]['def'] = True
                 secs.append({'sku': role, 'role': role, 'title': title, 'kind': kind, 'img': img, 'opts': ops})
@@ -157,7 +171,7 @@ def sobrat(proj, car, short, slug):
         if all(i in vids for i in both): options[a]['mutex'].append(b); options[b]['mutex'].append(a)
         else: print('ВНИМАНИЕ: пара несовместима не во всех версиях, правило не поставлено:', options[a]['name'], '/', options[b]['name'], flush=True)
     # скачать слои
-    urls = sorted({l[0] for f in frames for l in f[2]} | set(icons.values()) | set(intjobs.values()))
+    urls = sorted({l[0] for f in frames + iframes for l in f[2]} | set(icons.values()))
     with ThreadPoolExecutor(6) as ex: got = dict(zip(urls, ex.map(lambda u: curl(u, cpath(u)), urls)))
     print('слоёв и значков', len(urls), 'не скачалось', sum(not g for g in got.values()), flush=True)
     # рамка вырезки на вид: по слою дисков первой сборки (центр по горизонтали, колёса на 2/3 высоты), ширина одна на модель
@@ -178,7 +192,7 @@ def sobrat(proj, car, short, slug):
     def make(fr):
         dst, sid, ls, _ = fr; sig = (sid,) + tuple(l[0] for l in ls)
         if sig in done: return
-        done[sig] = dst; box = boxes[sid]; canvas = None
+        done[sig] = dst; box = boxes[sid]; canvas = None; size = (OUT_W, OUT_H) if sid not in ('int', 'int2') else (1600, 900)
         if os.path.exists(dst) and os.path.getsize(dst) > 300: return
         for u, x, y, w, h in ls:
             if not got.get(u): return
@@ -194,11 +208,12 @@ def sobrat(proj, car, short, slug):
                 l = px[x0 - 2, y]; r = px[x1 + 2, y]
                 for x in range(x0, x1):
                     t = (x - x0) / max(1, x1 - x0); px[x, y] = tuple(int(l[i] + (r[i] - l[i]) * t) for i in range(3))
-        canvas.resize((OUT_W, OUT_H), Image.LANCZOS).save(dst + '.part', 'WEBP', quality=86, method=4); os.replace(dst + '.part', dst)
+        canvas.resize(size, Image.LANCZOS).save(dst + '.part', 'WEBP', quality=86, method=4); os.replace(dst + '.part', dst)
     uniq = {}
-    for fr in frames: uniq.setdefault((fr[1],) + tuple(l[0] for l in fr[2]), fr)
+    boxes['int'] = boxes['int2'] = (0, 0, 5000, 2812)
+    for fr in frames + iframes: uniq.setdefault((fr[1],) + tuple(l[0] for l in fr[2]), fr)
     with ThreadPoolExecutor(4) as ex: list(ex.map(make, uniq.values()))
-    for dst, sid, ls, _ in frames:                                           # одинаковые сборки разных версий – копией
+    for dst, sid, ls, _ in frames + iframes:                                 # одинаковые сборки разных версий – копией
         src = done.get((sid,) + tuple(l[0] for l in ls))
         if src and src != dst and os.path.exists(src) and not os.path.exists(dst): shutil.copyfile(src, dst)
     def small(item, size, q):
@@ -206,8 +221,7 @@ def sobrat(proj, car, short, slug):
         if not got.get(u) or (os.path.exists(dst) and os.path.getsize(dst) > 300): return
         im = Image.open(cpath(u)); im = im.convert('RGBA' if size[0] < 200 else 'RGB'); im.thumbnail(size); im.save(dst + '.part', 'WEBP', quality=q, method=4); os.replace(dst + '.part', dst)
     for it in icons.items(): small(it, (112, 112), 88)
-    for it in intjobs.items(): small(it, (1600, 1600), 84)
-    keep = {f[0] for f in frames} | set(icons) | set(intjobs)                 # кадры от прежних сборок, которых больше нет в данных, убираем
+    keep = {f[0] for f in frames + iframes} | set(icons)                 # кадры от прежних сборок, которых больше нет в данных, убираем
     for d in ('ext', 'int', 'options'):
         for fn in os.listdir(f'{proj}/{IMG}/{d}'):
             if f'{proj}/{IMG}/{d}/{fn}' not in keep: os.remove(f'{proj}/{IMG}/{d}/{fn}')
@@ -219,7 +233,7 @@ def sobrat(proj, car, short, slug):
     for o in options.values():
         if o['icon'] and not ex_(f'{proj}/{o["icon"]}'): o['icon'] = None
     used = [sid for sid, _, _ in VIEWS if any(sid in ss for ss in have.values())]
-    shots = [{'id': sid, 'label': lab, 'fit': 'cover'} for sid, _, lab in VIEWS if sid in used] + [{'id': 'int', 'label': 'Салон', 'kind': 'int'}] + ([{'id': 'int2', 'label': 'Второй ряд', 'kind': 'int'}] if two else [])
+    shots = [{'id': sid, 'label': lab, 'fit': 'cover'} for sid, _, lab in VIEWS if sid in used] + [{'id': 'int', 'label': 'Салон', 'kind': 'int'}] + ([{'id': 'int2', 'label': 'Из второго ряда', 'kind': 'int'}] if two else [])
     for v in vers:
         by = {s['sku']: s for s in v['secs']}
         miss = [c for c in (v['codePrefix'] + p['id'] + '_' + w['id'] for p in by['paint']['opts'] for w in by['wheel']['opts'] if w['id'] not in options[p['id']]['mutex']) if c not in have]

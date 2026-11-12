@@ -9,12 +9,13 @@ cd "$D"
 [ -d .git ] || git init -q -b main
 mkdir -p css js tools .github/workflows
 cp $SRC/css/konfigurator.css css/; cp $SRC/js/konfigurator.js js/
-rm -f tools/proverka.py tools/xiaomi.py; cp $SRC/tools/xiaomi_api.py $SRC/tools/xiaomi_snyat.py $SRC/tools/xiaomi-model.sh $SRC/tools/proverka_vps.py $SRC/tools/proverka_kadrov.py $SRC/tools/vps.py $SRC/tools/srv_run.py $SRC/tools/ikonki-list.py tools/
+rm -f tools/proverka.py tools/xiaomi.py; cp $SRC/tools/xiaomi_api.py $SRC/tools/xiaomi_snyat.py $SRC/tools/xiaomi-model.sh $SRC/tools/proverka_vps.py $SRC/tools/proverka_kadrov.py $SRC/tools/obzor.py $SRC/tools/vps.py $SRC/tools/srv_run.py $SRC/tools/ikonki-list.py tools/
 cp $SRC/.github/workflows/pages.yml .github/workflows/; cp $SRC/robots.txt $SRC/.gitignore $SRC/.nojekyll .
 sed "s/Zeekr 9X/$CAR/g" $SRC/index.html > index.html
 [ -f raw/xiaomi-api.json ] || { echo "нет raw/xiaomi-api.json: сначала python3 tools/xiaomi_snyat.py <goodsId> ."; exit 1; }
 python3 tools/xiaomi_api.py sobrat . "$CAR" "$SHORT" "xiaomi-$SLUG"
 python3 tools/proverka_kadrov.py .
+mkdir -p raw/obzor && python3 tools/obzor.py . raw/obzor | tail -n +2   # листы для просмотра глазами: каждый кадр салона, кузов по версиям
 python3 - "$CAR" "$SLUG" <<'EOF'
 import json, sys, os
 car, slug = sys.argv[1:3]
