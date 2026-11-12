@@ -8,6 +8,7 @@ BRANDS = [
  ('Avatr', 'avatr', [('07l', '07L'), ('07', '07'), ('06', '06'), ('06t', '06T'), ('12', '12')]),
  ('Lynk & Co', 'lynkco', [('900', '900'), ('09', '09 EM-P'), ('08', '08 EM-P'), ('07', '07 EM-P'), ('z20', 'Z20')]),
  ('Geely Galaxy', 'geely', [('e5', 'Galaxy E5 (EX5)'), ('xingyuan', 'Xingyuan (EX2)'), ('starship-7', 'Starship 7'), ('starshine-6', 'Starshine 6')]),
+ ('Xpeng', 'xpeng', [('gx', 'GX')]),
 ]
 def pl(n, a, b, c):
     n10, n100 = n % 10, n % 100
